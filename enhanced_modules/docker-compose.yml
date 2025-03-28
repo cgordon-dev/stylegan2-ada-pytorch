@@ -1,0 +1,99 @@
+version: '3'
+
+services:
+  stylegan-train:
+    build:
+      context: ..
+      dockerfile: enhanced_modules/Dockerfile
+    image: stylegan2-ada-pytorch:latest
+    container_name: stylegan2-ada-training
+    command: train --dataset-path /workspace/datasets/custom --outdir /workspace/results
+    restart: "no"
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ../datasets:/workspace/datasets
+      - ../results:/workspace/results
+      - ../logs:/workspace/logs
+      - ../configs:/workspace/configs
+    
+  stylegan-inference:
+    build:
+      context: ..
+      dockerfile: enhanced_modules/Dockerfile
+    image: stylegan2-ada-pytorch:latest
+    container_name: stylegan2-ada-inference
+    command: generate --network /workspace/results/network-snapshot.pkl --seeds 0-10 --outdir /workspace/results/generated
+    restart: "no"
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ../results:/workspace/results
+      - ../logs:/workspace/logs
+  
+  stylegan-finetune:
+    build:
+      context: ..
+      dockerfile: enhanced_modules/Dockerfile
+    image: stylegan2-ada-pytorch:latest
+    container_name: stylegan2-ada-finetune
+    command: fine-tune --dataset-path /workspace/datasets/custom --resume ffhq256 --outdir /workspace/results
+    restart: "no"
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ../datasets:/workspace/datasets
+      - ../results:/workspace/results
+      - ../logs:/workspace/logs
+      - ../configs:/workspace/configs
+  
+  stylegan-optimize-latent:
+    build:
+      context: ..
+      dockerfile: enhanced_modules/Dockerfile
+    image: stylegan2-ada-pytorch:latest
+    container_name: stylegan2-ada-optimize-latent
+    command: optimize-latent --network /workspace/results/network-snapshot.pkl --target /workspace/datasets/targets --outdir /workspace/results/optimized
+    restart: "no"
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ../datasets:/workspace/datasets
+      - ../results:/workspace/results
+      - ../logs:/workspace/logs
+  
+  stylegan-mixed-precision:
+    build:
+      context: ..
+      dockerfile: enhanced_modules/Dockerfile
+    image: stylegan2-ada-pytorch:latest
+    container_name: stylegan2-ada-mixed-precision
+    command: mixed-precision --dataset-path /workspace/datasets/custom --outdir /workspace/results --mixed-precision-mode aggressive
+    restart: "no"
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ../datasets:/workspace/datasets
+      - ../results:/workspace/results
+      - ../logs:/workspace/logs
+      - ../configs:/workspace/configs
+  
+  stylegan-tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: stylegan2-ada-tensorboard
+    command: tensorboard --logdir /logs --host 0.0.0.0 --port 6006
+    restart: "no"
+    ports:
+      - "6006:6006"
+    volumes:
+      - ../logs:/logs
